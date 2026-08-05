@@ -38,7 +38,7 @@ def load_data():
     data = {}
     
     # Update these paths to match your data location
-    data_path = "Marketing Analytics/"  # Change this to your data folder path
+    data_path = "data/"  # Change this to your data folder path
     
     try:
         data['campaigns'] = pd.read_csv(f"{data_path}campaign_performance.csv", parse_dates=['date'])
