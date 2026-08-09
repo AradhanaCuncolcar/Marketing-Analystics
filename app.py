@@ -72,8 +72,7 @@ def plot_revenue_trend(df, agg_toggle):
 
 def plot_channel_performance(df, metric):
     channel_agg = df.groupby('channel')[metric].mean() if metric == 'roas' else df.groupby('channel')[metric].sum()
-    channel_agg = channel_agg.reset_index().sort_values(by=metric, ascending=True) # Ascending for horizontal sorting
-    # FIXED: Made it a horizontal bar chart
+    channel_agg = channel_agg.reset_index().sort_values(by=metric, ascending=True) 
     fig = px.bar(channel_agg, x=metric, y='channel', orientation='h', color='channel', title=f"{metric.capitalize()} by Channel")
     return fig
 
@@ -99,12 +98,10 @@ def plot_cumulative_conversions(df):
     return fig
 
 def plot_calendar_heatmap(df, year, metric):
-    # FIXED: Added GitHub-style calendar heatmap
     df_yr = df[df['year'] == year].copy()
     if df_yr.empty: return go.Figure(layout=dict(title="No data for selected year"))
     daily = df_yr.groupby('date')[metric].sum().reset_index()
     
-    # Ensure all days in the year exist to avoid gaps
     full_dates = pd.date_range(start=f'{year}-01-01', end=f'{year}-12-31')
     daily = daily.set_index('date').reindex(full_dates).fillna(0).reset_index()
     daily.rename(columns={'index': 'date'}, inplace=True)
@@ -127,8 +124,10 @@ def plot_ltv_boxplot(df, overlay):
     points = "all" if overlay else "outliers"
     return px.box(df, x="customer_segment", y="lifetime_value", color="customer_segment", points=points, title="LTV by Segment")
 
-def plot_satisfaction_violin(df):
-    return px.violin(df, x="nps_category", y="satisfaction_score", color="nps_category", box=True)
+def plot_satisfaction_violin(df, split_by_channel):
+    # FIXED: Split logic now properly applies acquisition channel if toggled
+    color_col = "acquisition_channel" if split_by_channel else "nps_category"
+    return px.violin(df, x="nps_category", y="satisfaction_score", color=color_col, box=True)
 
 def plot_sunburst_segments(df):
     return px.sunburst(df, path=['region', 'city_tier', 'customer_segment'], title="Hierarchy sized by Customer Count")
@@ -154,8 +153,11 @@ def plot_geo_store_bubbles(df):
 def plot_funnel(df):
     return go.Figure(go.Funnel(y=df['stage'], x=df['visitors'], textinfo="value+percent initial"))
 
-def plot_attribution_donut(df, model):
-    return px.pie(df, values=model, names='channel', hole=0.4)
+def plot_attribution_donut(df, model, total_conversions):
+    # FIXED: Center text annotation added for Total Conversions
+    fig = px.pie(df, values=model, names='channel', hole=0.5)
+    fig.update_layout(annotations=[dict(text=f"Total<br>{total_conversions:,.0f}", x=0.5, y=0.5, font_size=16, showarrow=False)])
+    return fig
 
 def plot_correlation_heatmap(df):
     return px.imshow(df, text_auto=True, aspect="auto", color_continuous_scale='RdBu_r')
@@ -171,14 +173,19 @@ def plot_sankey_journey(df):
     return go.Figure(data=[go.Sankey(node=dict(pad=15, thickness=20, line=dict(color="black", width=0.5), label=nodes), link=dict(source=source, target=target, value=value))])
 
 def plot_confusion_matrix(y_true, y_pred):
+    # FIXED: Calculates and displays both counts and percentages
     cm = confusion_matrix(y_true, y_pred)
-    return px.imshow(cm, text_auto=True, labels=dict(x="Predicted", y="Actual"), x=['Not Converted (0)', 'Converted (1)'], y=['Not Converted (0)', 'Converted (1)'], color_continuous_scale="Blues")
+    cm_pct = cm / cm.sum()
+    text = [[f"{cm[i][j]}<br>({cm_pct[i][j]:.1%})" for j in range(2)] for i in range(2)]
+    
+    fig = px.imshow(cm, text_auto=False, labels=dict(x="Predicted", y="Actual"), x=['Not Converted (0)', 'Converted (1)'], y=['Not Converted (0)', 'Converted (1)'], color_continuous_scale="Blues")
+    fig.update_traces(text=text, texttemplate="%{text}")
+    return fig
 
 def plot_roc_curve_with_optimal(y_true, y_probs):
     fpr, tpr, thresholds = roc_curve(y_true, y_probs)
     roc_auc = auc(fpr, tpr)
     
-    # FIXED: Calculate and mark the optimal threshold (Youden's J statistic)
     optimal_idx = np.argmax(tpr - fpr)
     opt_fpr, opt_tpr, opt_thresh = fpr[optimal_idx], tpr[optimal_idx], thresholds[optimal_idx]
     
@@ -205,9 +212,11 @@ def plot_learning_curve(df, show_bands):
         fig.add_trace(go.Scatter(x=pd.concat([df['training_size'], df['training_size'][::-1]]), y=pd.concat([df['validation_score'] + df['validation_score_std'], (df['validation_score'] - df['validation_score_std'])[::-1]]), fill='toself', fillcolor='rgba(255,100,80,0.2)', line=dict(color='rgba(255,255,255,0)'), hoverinfo="skip", showlegend=False))
     return fig
 
-def plot_feature_importance(df, sort_asc):
+def plot_feature_importance(df, sort_asc, show_error):
+    # FIXED: Logic updated to handle error bar hiding
     df_sorted = df.sort_values(by="importance", ascending=sort_asc)
-    return px.bar(df_sorted, x="importance", y="feature", orientation='h', error_x="importance_std", title="Model Features")
+    err_col = "importance_std" if show_error else None
+    return px.bar(df_sorted, x="importance", y="feature", orientation='h', error_x=err_col, title="Model Features")
 
 
 # ==========================================
@@ -246,7 +255,6 @@ if page == "Executive Overview":
         agg_toggle = col_t1.selectbox("Aggregation", ["D", "W", "M"], format_func=lambda x: {"D":"Daily", "W":"Weekly", "M":"Monthly"}[x])
         channel_filter = col_t2.multiselect("Filter Channel", options=df_camp['channel'].unique())
         
-        # FIXED: Added Date Range Selector
         min_date, max_date = df_camp['date'].min(), df_camp['date'].max()
         selected_dates = col_t3.date_input("Select Date Range", [min_date, max_date], min_value=min_date, max_value=max_date)
         
@@ -286,7 +294,6 @@ elif page == "Campaign Analytics":
             df_reg = df_camp[df_camp['year'] == year_sel].groupby(['quarter', 'region'])['revenue'].sum().reset_index()
             st.plotly_chart(plot_regional_revenue_qtr(df_reg), use_container_width=True)
             
-        # FIXED: Added Calendar Heatmap container
         with st.container(border=True):
             st.subheader("Daily Performance (Calendar Heatmap)")
             h_year = st.selectbox("Select Year", df_camp['year'].unique(), key="heat_year")
@@ -334,7 +341,9 @@ elif page == "Customer Insights":
     with col1:
         with st.container(border=True):
             st.subheader("Satisfaction Score")
-            st.plotly_chart(plot_satisfaction_violin(df_cust), use_container_width=True)
+            # FIXED: Split checkbox passed down to function
+            split_chan = st.checkbox("Split by Acquisition Channel")
+            st.plotly_chart(plot_satisfaction_violin(df_cust, split_chan), use_container_width=True)
     with col2:
         with st.container(border=True):
             st.subheader("Income vs LTV")
@@ -392,7 +401,9 @@ elif page == "Attribution & Funnel":
         with st.container(border=True):
             st.subheader("Channel Attribution Models")
             attr_model = st.selectbox("Attribution Model", ['first_touch', 'last_touch', 'linear', 'time_decay', 'position_based'])
-            st.plotly_chart(plot_attribution_donut(data["attribution"], attr_model), use_container_width=True)
+            # FIXED: Pass total conversions to donut chart
+            total_conv = data["campaign"]["conversions"].sum()
+            st.plotly_chart(plot_attribution_donut(data["attribution"], attr_model, total_conv), use_container_width=True)
         
     with st.container(border=True):
         st.subheader("Metric Correlation Matrix")
@@ -434,5 +445,8 @@ elif page == "ML Model Evaluation":
     with col4:
         with st.container(border=True):
             st.subheader("Feature Importance")
-            sort_asc = st.checkbox("Sort Ascending", value=True)
-            st.plotly_chart(plot_feature_importance(data["feature_imp"], sort_asc), use_container_width=True)
+            # FIXED: Added Error bar visibility toggle
+            col_fi1, col_fi2 = st.columns(2)
+            sort_asc = col_fi1.checkbox("Sort Ascending", value=True)
+            show_error = col_fi2.checkbox("Show Error Bars", value=True)
+            st.plotly_chart(plot_feature_importance(data["feature_imp"], sort_asc, show_error), use_container_width=True)
