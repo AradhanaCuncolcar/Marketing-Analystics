@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import confusion_matrix, roc_curve, auc, precision_recall_curve
 import io
+import os
 
 # ==========================================
 # Page Configuration
@@ -14,28 +15,31 @@ import io
 st.set_page_config(page_title="NovaMart Dashboard", layout="wide", page_icon="🛒")
 
 # ==========================================
-# Data Loading & Caching
+# Data Loading & Caching (UPDATED PATHS)
 # ==========================================
 @st.cache_data
 def load_data():
     try:
-        campaign_df = pd.read_csv("campaign_performance.csv")
+        # Pointing pandas to look inside the "data" folder
+        data_dir = "data"
+        
+        campaign_df = pd.read_csv(os.path.join(data_dir, "campaign_performance.csv"))
         # Ensure date format for time series
         if 'date' in campaign_df.columns:
             campaign_df['date'] = pd.to_datetime(campaign_df['date'])
         
         return {
             "campaign": campaign_df,
-            "customer": pd.read_csv("customer_data.csv"),
-            "product": pd.read_csv("product_sales.csv"),
-            "lead_scoring": pd.read_csv("lead_scoring_results.csv"),
-            "feature_imp": pd.read_csv("feature_importance.csv"),
-            "learning_curve": pd.read_csv("learning_curve.csv"),
-            "geo": pd.read_csv("geographic_data.csv"),
-            "attribution": pd.read_csv("channel_attribution.csv"),
-            "funnel": pd.read_csv("funnel_data.csv"),
-            "journey": pd.read_csv("customer_journey.csv"),
-            "corr": pd.read_csv("correlation_matrix.csv").set_index("Unnamed: 0")
+            "customer": pd.read_csv(os.path.join(data_dir, "customer_data.csv")),
+            "product": pd.read_csv(os.path.join(data_dir, "product_sales.csv")),
+            "lead_scoring": pd.read_csv(os.path.join(data_dir, "lead_scoring_results.csv")),
+            "feature_imp": pd.read_csv(os.path.join(data_dir, "feature_importance.csv")),
+            "learning_curve": pd.read_csv(os.path.join(data_dir, "learning_curve.csv")),
+            "geo": pd.read_csv(os.path.join(data_dir, "geographic_data.csv")),
+            "attribution": pd.read_csv(os.path.join(data_dir, "channel_attribution.csv")),
+            "funnel": pd.read_csv(os.path.join(data_dir, "funnel_data.csv")),
+            "journey": pd.read_csv(os.path.join(data_dir, "customer_journey.csv")),
+            "corr": pd.read_csv(os.path.join(data_dir, "correlation_matrix.csv")).set_index("Unnamed: 0")
         }
     except Exception as e:
         st.error(f"Error loading datasets: {e}")
