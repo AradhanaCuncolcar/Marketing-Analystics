@@ -5,7 +5,11 @@
 This dataset simulates 2 years (2023-2024) of marketing data for **NovaMart**, a fictional omnichannel retail company operating across India.
 
 ---
+**Developer:** Aradhana Dilip Cuncolcar
+---
 
+## 🚀 Live Demo
+[Access the Live Dashboard Here](https://marketing-analystics-wlcnfwrravdkvlw8ckfmna.streamlit.app/)
 
 ---
 ## 📁 Dataset Files
