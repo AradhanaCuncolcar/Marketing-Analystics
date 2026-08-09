@@ -6,6 +6,8 @@ This dataset simulates 2 years (2023-2024) of marketing data for **NovaMart**, a
 
 ---
 
+
+---
 ## 📁 Dataset Files
 
 | File | Records | Description |
@@ -112,8 +114,4 @@ streamlit run streamlit_starter_app.py
 
 ---
 
-## 📧 Questions?
 
-Contact your course instructor.
-
-**Good luck! Let data tell the story.** 📊✨
