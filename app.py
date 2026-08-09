@@ -73,7 +73,9 @@ def plot_revenue_trend(df, agg_toggle):
 def plot_channel_performance(df, metric):
     channel_agg = df.groupby('channel')[metric].mean() if metric == 'roas' else df.groupby('channel')[metric].sum()
     channel_agg = channel_agg.reset_index().sort_values(by=metric, ascending=True) 
-    fig = px.bar(channel_agg, x=metric, y='channel', orientation='h', color='channel', title=f"{metric.capitalize()} by Channel")
+    fig = px.bar(channel_agg, x=metric, y='channel', orientation='h', color='channel', 
+                 title=f"{metric.capitalize()} by Channel", text_auto='.2s')
+    fig.update_traces(marker_line_color='black', marker_line_width=1, textposition='outside')
     return fig
 
 def plot_campaign_revenue_animated(df):
@@ -81,15 +83,19 @@ def plot_campaign_revenue_animated(df):
     month_order = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
     df_anim['month'] = pd.Categorical(df_anim['month'], categories=month_order, ordered=True)
     df_anim = df_anim.sort_values('month')
-    fig = px.bar(df_anim, x="region", y="revenue", color="region", animation_frame="month", animation_group="region", range_y=[0, df_anim['revenue'].max()*1.1])
+    fig = px.bar(df_anim, x="region", y="revenue", color="region", animation_frame="month", 
+                 animation_group="region", range_y=[0, df_anim['revenue'].max()*1.1], text_auto='.2s')
+    fig.update_traces(marker_line_color='black', marker_line_width=1)
     return fig
 
 def plot_regional_revenue_qtr(df):
-    fig = px.bar(df, x='quarter', y='revenue', color='region', barmode='group')
+    fig = px.bar(df, x='quarter', y='revenue', color='region', barmode='group', text_auto='.2s')
+    fig.update_traces(marker_line_color='black', marker_line_width=1)
     return fig
 
 def plot_campaign_spend_contribution(df, norm):
-    fig = px.histogram(df, x='month', y='spend', color='campaign_type', barnorm=norm)
+    fig = px.histogram(df, x='month', y='spend', color='campaign_type', barnorm=norm, text_auto='.2s')
+    fig.update_traces(marker_line_color='black', marker_line_width=1)
     return fig
 
 def plot_cumulative_conversions(df):
@@ -100,37 +106,45 @@ def plot_cumulative_conversions(df):
 def plot_calendar_heatmap(df, year, metric):
     df_yr = df[df['year'] == year].copy()
     if df_yr.empty: return go.Figure(layout=dict(title="No data for selected year"))
-    daily = df_yr.groupby('date')[metric].sum().reset_index()
     
+    daily = df_yr.groupby('date')[metric].sum().reset_index()
     full_dates = pd.date_range(start=f'{year}-01-01', end=f'{year}-12-31')
+    
+    # Reindex safely
     daily = daily.set_index('date').reindex(full_dates).fillna(0).reset_index()
     daily.rename(columns={'index': 'date'}, inplace=True)
     
-    daily['week'] = daily['date'].dt.isocalendar().week
+    # Extract week and weekday attributes
+    daily['week'] = daily['date'].dt.isocalendar().week.astype(int)
     daily['weekday'] = daily['date'].dt.weekday
     
-    pivot = daily.pivot(index='weekday', columns='week', values=metric)
-    day_names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    # Use pivot_table to safely aggregate any overlapping ISO calendar weeks at the start/end of the year
+    pivot = daily.pivot_table(index='weekday', columns='week', values=metric, aggfunc='sum')
     
-    fig = px.imshow(pivot, labels=dict(x="Week", y="Day", color=metric.capitalize()),
+    day_names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    fig = px.imshow(pivot, labels=dict(x="ISO Week", y="Day", color=metric.capitalize()),
                     y=day_names, title=f"Daily {metric.capitalize()} Heatmap ({year})",
                     color_continuous_scale="Greens", aspect="auto")
     return fig
 
 def plot_age_distribution(df, bins):
-    return px.histogram(df, x='age', nbins=bins, title="Age Distribution")
+    fig = px.histogram(df, x='age', nbins=bins, title="Age Distribution", text_auto=True)
+    fig.update_traces(marker_line_color='black', marker_line_width=1)
+    return fig
 
 def plot_ltv_boxplot(df, overlay):
     points = "all" if overlay else "outliers"
-    return px.box(df, x="customer_segment", y="lifetime_value", color="customer_segment", points=points, title="LTV by Segment")
+    fig = px.box(df, x="customer_segment", y="lifetime_value", color="customer_segment", points=points, title="LTV by Segment")
+    return fig
 
 def plot_satisfaction_violin(df, split_by_channel):
-    # FIXED: Split logic now properly applies acquisition channel if toggled
     color_col = "acquisition_channel" if split_by_channel else "nps_category"
     return px.violin(df, x="nps_category", y="satisfaction_score", color=color_col, box=True)
 
 def plot_sunburst_segments(df):
-    return px.sunburst(df, path=['region', 'city_tier', 'customer_segment'], title="Hierarchy sized by Customer Count")
+    fig = px.sunburst(df, path=['region', 'city_tier', 'customer_segment'], title="Hierarchy sized by Customer Count")
+    fig.update_traces(marker_line_color='black', marker_line_width=1)
+    return fig
 
 def plot_income_ltv_scatter(df, trend):
     trendline_type = "ols" if trend else None
@@ -140,7 +154,9 @@ def plot_ctr_cvr_bubble(df):
     return px.scatter(df, x="ctr", y="conversion_rate", size="spend", color="channel", hover_name="channel", size_max=60, title="Bubble size = Total Spend")
 
 def plot_product_treemap(df):
-    return px.treemap(df, path=[px.Constant("All Products"), 'category', 'subcategory', 'product_name'], values='sales', color='profit_margin', color_continuous_scale='RdYlGn', hover_data=['units_sold', 'avg_rating'])
+    fig = px.treemap(df, path=[px.Constant("All Products"), 'category', 'subcategory', 'product_name'], values='sales', color='profit_margin', color_continuous_scale='RdYlGn', hover_data=['units_sold', 'avg_rating'])
+    fig.update_traces(marker_line_color='black', marker_line_width=1)
+    return fig
 
 def plot_geo_choropleth(df, metric):
     fig = px.scatter_geo(df, lat='latitude', lon='longitude', size=metric, color='region', hover_name='state', scope='asia', center={'lat':20.5937, 'lon':78.9629}, title=f"India: {metric.replace('_', ' ').capitalize()}")
@@ -151,11 +167,13 @@ def plot_geo_store_bubbles(df):
     return px.scatter_mapbox(df, lat="latitude", lon="longitude", hover_name="state", size="store_count", color="customer_satisfaction", color_continuous_scale=px.colors.cyclical.IceFire, size_max=25, zoom=3, mapbox_style="carto-positron")
 
 def plot_funnel(df):
-    return go.Figure(go.Funnel(y=df['stage'], x=df['visitors'], textinfo="value+percent initial"))
+    fig = go.Figure(go.Funnel(y=df['stage'], x=df['visitors'], textinfo="value+percent initial"))
+    fig.update_traces(marker_line_color='black', marker_line_width=1)
+    return fig
 
 def plot_attribution_donut(df, model, total_conversions):
-    # FIXED: Center text annotation added for Total Conversions
     fig = px.pie(df, values=model, names='channel', hole=0.5)
+    fig.update_traces(textinfo='label+percent', textposition='inside', marker_line_color='black', marker_line_width=1)
     fig.update_layout(annotations=[dict(text=f"Total<br>{total_conversions:,.0f}", x=0.5, y=0.5, font_size=16, showarrow=False)])
     return fig
 
@@ -173,7 +191,6 @@ def plot_sankey_journey(df):
     return go.Figure(data=[go.Sankey(node=dict(pad=15, thickness=20, line=dict(color="black", width=0.5), label=nodes), link=dict(source=source, target=target, value=value))])
 
 def plot_confusion_matrix(y_true, y_pred):
-    # FIXED: Calculates and displays both counts and percentages
     cm = confusion_matrix(y_true, y_pred)
     cm_pct = cm / cm.sum()
     text = [[f"{cm[i][j]}<br>({cm_pct[i][j]:.1%})" for j in range(2)] for i in range(2)]
@@ -213,11 +230,11 @@ def plot_learning_curve(df, show_bands):
     return fig
 
 def plot_feature_importance(df, sort_asc, show_error):
-    # FIXED: Logic updated to handle error bar hiding
     df_sorted = df.sort_values(by="importance", ascending=sort_asc)
     err_col = "importance_std" if show_error else None
-    return px.bar(df_sorted, x="importance", y="feature", orientation='h', error_x=err_col, title="Model Features")
-
+    fig = px.bar(df_sorted, x="importance", y="feature", orientation='h', error_x=err_col, title="Model Features", text_auto='.2f')
+    fig.update_traces(marker_line_color='black', marker_line_width=1, textposition='outside')
+    return fig
 
 # ==========================================
 # Main App Execution
@@ -341,7 +358,6 @@ elif page == "Customer Insights":
     with col1:
         with st.container(border=True):
             st.subheader("Satisfaction Score")
-            # FIXED: Split checkbox passed down to function
             split_chan = st.checkbox("Split by Acquisition Channel")
             st.plotly_chart(plot_satisfaction_violin(df_cust, split_chan), use_container_width=True)
     with col2:
@@ -401,7 +417,6 @@ elif page == "Attribution & Funnel":
         with st.container(border=True):
             st.subheader("Channel Attribution Models")
             attr_model = st.selectbox("Attribution Model", ['first_touch', 'last_touch', 'linear', 'time_decay', 'position_based'])
-            # FIXED: Pass total conversions to donut chart
             total_conv = data["campaign"]["conversions"].sum()
             st.plotly_chart(plot_attribution_donut(data["attribution"], attr_model, total_conv), use_container_width=True)
         
@@ -445,7 +460,6 @@ elif page == "ML Model Evaluation":
     with col4:
         with st.container(border=True):
             st.subheader("Feature Importance")
-            # FIXED: Added Error bar visibility toggle
             col_fi1, col_fi2 = st.columns(2)
             sort_asc = col_fi1.checkbox("Sort Ascending", value=True)
             show_error = col_fi2.checkbox("Show Error Bars", value=True)
