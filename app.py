@@ -15,7 +15,7 @@ import os
 st.set_page_config(page_title="NovaMart Dashboard", layout="wide", page_icon="🛒")
 
 # ==========================================
-# Data Loading & Caching (UPDATED PATHS)
+# Data Loading & Caching (UPDATED DATE FORMAT)
 # ==========================================
 @st.cache_data
 def load_data():
@@ -24,9 +24,10 @@ def load_data():
         data_dir = "data"
         
         campaign_df = pd.read_csv(os.path.join(data_dir, "campaign_performance.csv"))
-        # Ensure date format for time series
+        
+        # Ensure date format for time series - Explicitly setting Day/Month/Year
         if 'date' in campaign_df.columns:
-            campaign_df['date'] = pd.to_datetime(campaign_df['date'])
+            campaign_df['date'] = pd.to_datetime(campaign_df['date'], format='%d/%m/%Y')
         
         return {
             "campaign": campaign_df,
